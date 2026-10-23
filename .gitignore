@@ -35,6 +35,7 @@ PicoDrive*.zip
 *.pkg
 *.self
 pkg/
+release/
 tools/make_carthw_c
 pico_int_offs.h
 amalgamate
