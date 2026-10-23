@@ -6,6 +6,21 @@ Ported by **theheroGAC** (2026).
 
 ---
 
+## Authors & Credits
+
+PicoDrive was created and developed over more than two decades by exceptional developers:
+
+- **Dave (fDave)**: Original creator of PicoDrive; developed the initial codebase and architecture.
+- **notaz**: Primary maintainer and core developer (2006–2013); added Sega Mega CD, Sega 32X, SVP (Virtua Racing), Cyclone 68000 core integration, ARM assembly optimizations, and multi-platform portability.
+- **irixxxx**: Current maintainer (2018–2024); added 64-bit support, modern SH-2 DRC recompilers (ARM64, MIPS, RISC-V, PowerPC), libchdr integration, MD+/MSU enhancements, SC-3000 cassette emulation, and timing accuracy.
+- **Stef & Chui**: FAME/C 68000 emulation core.
+- **Reesy & FluBBa**: DrZ80 Z80 emulation core.
+- **Stef & NJ**: CZ80 Z80 emulation core.
+- **MAME Team**: SH-2, YM2612 (FM audio), and SN76496 (PSG) cores.
+- **theheroGAC**: PlayStation 3 port (2026), PSL1GHT SDL2 integration, RSX rendering, 48 kHz dynamic drift audio engine, and 32X PWM audio balance.
+
+---
+
 ## Overview
 
 This is the PlayStation 3 version of the popular SEGA 8-bit and 16-bit console emulator, PicoDrive.
