@@ -1689,6 +1689,10 @@ void emu_loop(void)
 	reset_timing = 1;
 	frames_done = frames_shown = 0;
 
+	if (notice_msg_time != 0 &&
+	    (int)(plat_get_ticks_ms() - notice_msg_time) > STATUS_MSG_TIMEOUT)
+		notice_msg_time = plat_get_ticks_ms();
+
 	/* loop with resync every 1 sec. */
 	while (engineState == PGS_Running)
 	{

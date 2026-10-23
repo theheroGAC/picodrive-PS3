@@ -105,9 +105,11 @@ static void consume_fifo_do(SH2 *sh2, unsigned int m68k_cycles,
       sum |= (u16)pwm.current[1];
     }
 
-    mem->pwm[pwm.ptr * 2    ] = pwm.current[0];
-    mem->pwm[pwm.ptr * 2 + 1] = pwm.current[1];
-    pwm.ptr = (pwm.ptr + 1) & (PWM_BUFF_LEN - 1);
+    if (pwm.ptr < PWM_BUFF_LEN - 1) {
+      mem->pwm[pwm.ptr * 2    ] = pwm.current[0];
+      mem->pwm[pwm.ptr * 2 + 1] = pwm.current[1];
+      pwm.ptr++;
+    }
 
     if (--Pico32x.pwm_irq_cnt <= 0) {
       Pico32x.pwm_irq_cnt = pwm.irq_reload;
@@ -286,10 +288,9 @@ void p32x_pwm_update(s32 *buf32, int length, int stereo)
   if (stereo)
   {
     if (xmd == 0x05) {
-      // normal
       while (length-- > 0) {
-        *buf32++ += pwmb[0];
-        *buf32++ += pwmb[1];
+        *buf32++ += (pwmb[0] * 3) >> 2;
+        *buf32++ += (pwmb[1] * 3) >> 2;
 
         p += step;
         pwmb += (p >> 16) * 2;
@@ -297,10 +298,9 @@ void p32x_pwm_update(s32 *buf32, int length, int stereo)
       }
     }
     else if (xmd == 0x0a) {
-      // channel swap
       while (length-- > 0) {
-        *buf32++ += pwmb[1];
-        *buf32++ += pwmb[0];
+        *buf32++ += (pwmb[1] * 3) >> 2;
+        *buf32++ += (pwmb[0] * 3) >> 2;
 
         p += step;
         pwmb += (p >> 16) * 2;
@@ -308,13 +308,12 @@ void p32x_pwm_update(s32 *buf32, int length, int stereo)
       }
     }
     else {
-      // mono - LMD, RMD specify dst
-      if (xmd & 0x06) // src is R
+      if (xmd & 0x06)
         pwmb++;
-      if (xmd & 0x0c) // dst is R
+      if (xmd & 0x0c)
         buf32++;
       while (length-- > 0) {
-        *buf32 += *pwmb;
+        *buf32 += (*pwmb * 3) >> 2;
 
         p += step;
         pwmb += (p >> 16) * 2;
@@ -325,9 +324,8 @@ void p32x_pwm_update(s32 *buf32, int length, int stereo)
   }
   else
   {
-    // mostly unused
     while (length-- > 0) {
-      *buf32++ += pwmb[0];
+      *buf32++ += (pwmb[0] * 3) >> 2;
 
       p += step;
       pwmb += (p >> 16) * 2;

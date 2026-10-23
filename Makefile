@@ -75,7 +75,9 @@ CFLAGS += $(call chkCCflag, -fno-tree-loop-if-convert -fipa-pta -fno-ipa-cp)
 endif
 else
 ifneq ($(STATIC_LINKING), 1)
+ifneq ("$(PLATFORM)", "ps3")
 CFLAGS += $(call chkCCflag, -flto)
+endif
 endif
 endif
 
@@ -258,6 +260,15 @@ OBJS += platform/ps2/emu.o
 OBJS += platform/ps2/in_ps2.o
 USE_FRONTEND = 1
 endif
+ifeq "$(PLATFORM)" "ps3"
+CFLAGS += -D__PS3__ -D__PSL1GHT__ -DUSE_BGR555 -DFAMEC_NO_GOTOS
+LDFLAGS += -fno-lto
+LDLIBS += -lSDL2 -lgcm_sys -lio -laudio -lsysutil -lrsx -lrt -llv2 -lm -lpng -lz
+OBJS += platform/ps3/plat.o
+OBJS += platform/ps3/emu.o
+OBJS += platform/ps3/in_ps3.o
+USE_FRONTEND = 1
+endif
 ifeq "$(PLATFORM)" "win32"
 CFLAGS += -DSDL_OVERLAY_2X -DSDL_BUFFER_3X -DSDL_REDRAW_EVT
 OBJS += platform/win32/plat.o
@@ -433,6 +444,31 @@ include $(PSPSDK)/lib/build.mak
 # TODO image generation
 endif
 
+ifeq "$(PLATFORM)" "ps3"
+CONTENT_ID ?= UP0001-PICO00001_00-0000000000000000
+
+PicoDrive.self: $(TARGET)
+	sprxlinker $<
+	make_self $< $@
+
+PicoDrive.pkg: $(TARGET)
+	mkdir -p pkg/USRDIR
+	cp -f $(TARGET) pkg/USRDIR/PicoDrive.elf
+	sprxlinker pkg/USRDIR/PicoDrive.elf
+	make_self_npdrm pkg/USRDIR/PicoDrive.elf pkg/USRDIR/EBOOT.BIN $(CONTENT_ID)
+	rm -f pkg/USRDIR/PicoDrive.elf
+	sfo --title=PicoDrive --appid="PICO00001" -f platform/ps3/sfo.xml pkg/PARAM.SFO
+	cp -f platform/ps3/ICON0.PNG pkg/ICON0.PNG
+	cp -f platform/ps3/PIC1.PNG pkg/PIC1.PNG
+	mkdir -p pkg/USRDIR/skin
+	cp -rf skin/* pkg/USRDIR/skin/ 2>/dev/null || true
+	pkg --contentid=$(CONTENT_ID) pkg/ $@
+	cp -f $@ picodrive_PS3.gnpdrm.pkg
+	package_finalize picodrive_PS3.gnpdrm.pkg
+
+all: PicoDrive.pkg
+endif
+
 pprof: platform/linux/pprof.c
 	$(CC) $(CFLAGS) -O2 -ggdb -DPPROF -DPPROF_TOOL -I../../ -I. $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
@@ -497,7 +533,5 @@ cpu/sh2/compiler.o : cpu/drc/emit_x86.c cpu/drc/emit_mips.c cpu/drc/emit_riscv.c
 cpu/sh2/mame/sh2pico.o : cpu/sh2/mame/sh2.c
 pico/pico.o pico/cd/mcd.o pico/32x/32x.o : pico/pico_cmn.c
 pico/memory.o pico/cd/memory.o pico/32x/memory.o : pico/memory.h
-$(shell grep -rl pico_int.h pico) : pico/pico_int.h
-# pico/cart.o : pico/carthw_cfg.c
 cpu/fame/famec.o: cpu/fame/famec.c cpu/fame/famec_opcodes.h
 platform/common/menu_pico.o: platform/libpicofe/menu.c

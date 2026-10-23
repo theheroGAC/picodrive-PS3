@@ -32,6 +32,10 @@ picodrive_libretro*
 PicoDrive*.opk
 PicoDrive*.ipk
 PicoDrive*.zip
+*.pkg
+*.self
+pkg/
+tools/make_carthw_c
 pico_int_offs.h
 amalgamate
 textfilter

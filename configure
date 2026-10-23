@@ -39,7 +39,7 @@ check_define()
 # "" means "autodetect".
 
 # TODO this is annoyingly messy. should have platform and device
-platform_list="generic pandora gph dingux retrofw opendingux[-gcw0] odbeta[-gcw0] miyoo rpi1 rpi2 ps2 psp win32"
+platform_list="generic pandora gph dingux retrofw opendingux[-gcw0] odbeta[-gcw0] miyoo rpi1 rpi2 ps2 ps3 psp win32"
 platform="generic"
 sound_driver_list="oss alsa sdl"
 sound_drivers=""
@@ -159,6 +159,13 @@ set_platform()
     ASFLAGS="$ASFLAGS -G0 -call_shared"
     CFLAGS="$CFLAGS -D_EE -G0 -I${PS2SDK}/ee/include -I${PS2SDK}/common/include -I${PS2DEV}/gsKit/include -I${PS2SDK}/ports/include"
     LDFLAGS="$LDFLAGS -Wl,-zmax-page-size=128 -T${PS2SDK}/ee/startup/linkfile -L${PS2SDK}/ee/lib -L${PS2DEV}/gsKit/lib -L${PS2SDK}/ports/lib"
+    ;;
+  ps3)
+    SYSLIBS=""
+    MFLAGS=""
+    ARCH=powerpc64
+    CFLAGS="$CFLAGS -D__PS3__ -D__PSL1GHT__ -I${PSL1GHT}/ppu/include -I${PSL1GHT}/portlibs/ppu/include"
+    LDFLAGS="$LDFLAGS -L${PSL1GHT}/ppu/lib -L${PSL1GHT}/portlibs/ppu/lib"
     ;;
   win32)
     MFLAGS=""

@@ -1,3 +1,63 @@
+# PicoDrive PS3 (v.1.0.0)
+
+Port of **PicoDrive** for the **PlayStation 3** (PS3) using the PSL1GHT SDK.
+
+Ported by **theheroGAC** (2026).
+
+---
+
+## Overview
+
+This is the PlayStation 3 version of the popular SEGA 8-bit and 16-bit console emulator, PicoDrive.
+It can run games developed for most consumer hardware released by SEGA, up to and including the 32X:
+- **16 bit systems:** Mega Drive/Genesis, Sega/Mega CD, 32X, Pico
+- **8 bit systems:** SG-1000, SC-3000, Master System/Mark III, Game Gear
+
+---
+
+## PS3 Port Features
+
+- **High-Performance Audio Engine**: Dedicated 48 kHz stereo audio thread with smooth dynamic buffer drift tracking for both 60 Hz (NTSC) and 50 Hz (PAL) titles without stuttering or crackling.
+- **Sega 32X PWM Sound Fixes**: Full PWM sound emulation with optimized IRQ handling (`POPT_PWM_IRQ_OPT`), buffer-wrap protection, and calibrated mix headroom.
+- **Hardware-Accelerated RSX / SDL2 Video**: Smooth bilinear filtering, integer scaling, 4:3 aspect ratio, widescreen mode, and native 5× centered scaling for Game Gear games.
+- **Integrated ROM Browser**: Fast file selector supporting `/dev_hdd0/picodrive/roms`, `/dev_hdd0/game/PICO00001/USRDIR/roms`, and external USB storage (`/dev_usb000`, `/dev_usb001`).
+- **DualShock 3 Controls**:
+  - **D-Pad / Left Stick**: Directional Controls
+  - **Cross / Square / Circle**: B / A / C (or 6-button mappings)
+  - **Triangle**: Switch renderer / display mode
+  - **Start**: Start button
+  - **Select**: In-game Emulator Menu
+  - **L1 / R1**: Quick Save / Load State
+  - **PS Button**: Clean exit to XMB with SysUtil event handling.
+
+---
+
+## Building for PS3
+
+Requires the **PSL1GHT v2** toolchain installed (or `ps3dev-sdk`).
+
+```bash
+export PSL1GHT=/path/to/ps3dev-sdk
+export PS3DEV=/path/to/ps3dev-sdk
+export PATH=$PSL1GHT/bin:$PSL1GHT/ppu/bin:$PATH
+
+./configure --platform=ps3
+make PicoDrive.pkg
+```
+
+Or run the build script:
+```bash
+./build.sh
+```
+
+This generates:
+- `picodrive_PS3.gnpdrm.pkg` (Signed retail NPDRM package)
+- `PicoDrive_CEX.pkg` (Standard Custom Firmware package)
+- `picodrive.elf` (Uncompressed PPU executable)
+- `pkg/` directory containing `EBOOT.BIN`, `PARAM.SFO`, `ICON0.PNG`, `PIC1.PNG`, and skins.
+
+---
+
 This is yet another SEGA 8 bit and 16 bit console emulator.
 
 It can run games developed for most consumer hardware released

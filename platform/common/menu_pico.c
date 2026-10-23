@@ -21,7 +21,7 @@
 #include <pico/pico_int.h>
 #include <pico/patch.h>
 
-#if defined(PANDORA) || defined(__PS2__)
+#if defined(PANDORA) || defined(__PS2__) || defined(__PS3__)
 #define MENU_X2 1
 #else
 #define MENU_X2 0
@@ -76,6 +76,8 @@ static int menu_w, menu_h;
 #include <platform/psp/menu.c>
 #elif defined(__PS2__)
 #include <platform/ps2/menu.c>
+#elif defined(__PS3__)
+#include <platform/ps3/menu.c>
 #elif defined(PANDORA)
 #include <platform/pandora/menu.c>
 #else
@@ -1345,8 +1347,9 @@ static void draw_frame_credits(void)
 }
 
 static const char credits[] =
-	"PicoDrive v" VERSION "\n"
-	"(c) notaz, 2006-2013; irixxxx, 2018-2024\n\n"
+	"PicoDrive v.1.0.0 PS3\n"
+	"(c) notaz, 2006-2013; irixxxx, 2018-2024\n"
+	"Port PS3 by theheroGAC 2026\n\n"
 	"Credits:\n"
 	"fDave: initial code\n"
 #ifdef EMU_C68K
@@ -1471,6 +1474,71 @@ static int mh_savetape(int id, int keys)
 	return 1;
 }
 
+#ifdef __PS3__
+enum {
+	MA_ROM_SOURCE_HDD = 2000,
+	MA_ROM_SOURCE_USB,
+};
+
+static const char *rom_source_dir;
+
+static int mh_rom_source(int id, int keys)
+{
+	static const char *hdd_dirs[] = {
+		"/dev_hdd0/picodrive/roms",
+		"/dev_hdd0/game/PICO00001/USRDIR/roms",
+		"/dev_hdd0/roms",
+	};
+	int i;
+
+	switch (id) {
+	case MA_ROM_SOURCE_HDD:
+		for (i = 0; i < (int)(sizeof(hdd_dirs) / sizeof(hdd_dirs[0])); i++) {
+			if (plat_is_dir(hdd_dirs[i])) {
+				rom_source_dir = hdd_dirs[i];
+				return 1;
+			}
+		}
+		rom_source_dir = "/dev_hdd0";
+		return 1;
+	case MA_ROM_SOURCE_USB:
+		if (plat_is_dir("/dev_usb000"))
+			rom_source_dir = "/dev_usb000";
+		else
+			rom_source_dir = "/dev_usb001";
+		return 1;
+	}
+	return 0;
+}
+
+static menu_entry e_menu_rom_source[] =
+{
+	mee_label     ("Select ROM location:"),
+	mee_handler_id("HDD  picodrive/roms", MA_ROM_SOURCE_HDD, mh_rom_source),
+	mee_handler_id("USB drive",          MA_ROM_SOURCE_USB, mh_rom_source),
+	mee_end,
+};
+
+static const char *menu_loop_load_rom(void)
+{
+	static int sel = 0;
+	char path[512];
+	const char *ret;
+
+	me_enable(e_menu_rom_source, MA_ROM_SOURCE_HDD, 1);
+	me_enable(e_menu_rom_source, MA_ROM_SOURCE_USB,
+		plat_is_dir("/dev_usb000") || plat_is_dir("/dev_usb001"));
+
+	rom_source_dir = NULL;
+	me_loop_d(e_menu_rom_source, &sel, menu_draw_prep, NULL);
+	if (rom_source_dir == NULL)
+		return NULL;
+
+	snprintf(path, sizeof(path), "%s", rom_source_dir);
+	return menu_loop_romsel_d(path, sizeof(path), rom_exts, NULL, menu_draw_prep);
+}
+#endif
+
 static int main_menu_handler(int id, int keys)
 {
 	const char *ret_name;
@@ -1497,8 +1565,12 @@ static int main_menu_handler(int id, int keys)
 		break;
 	case MA_MAIN_LOAD_ROM:
 		rom_fname_reload = NULL;
+#ifdef __PS3__
+		ret_name = menu_loop_load_rom();
+#else
 		ret_name = menu_loop_romsel_d(rom_fname_loaded,
 			sizeof(rom_fname_loaded), rom_exts, NULL, menu_draw_prep);
+#endif
 		if (ret_name != NULL) {
 			lprintf("selected file: %s\n", ret_name);
 			rom_fname_reload = ret_name;
@@ -1518,6 +1590,13 @@ static int main_menu_handler(int id, int keys)
 	case MA_MAIN_CREDITS:
 		draw_menu_message(credits, draw_frame_credits);
 		in_menu_wait(PBTN_MOK|PBTN_MBACK, NULL, 70);
+		break;
+	case MA_MAIN_MAIN_MENU:
+		if (PicoGameLoaded) {
+			PicoGameLoaded = 0;
+			engineState = PGS_Menu;
+			return 1;
+		}
 		break;
 	case MA_MAIN_EXIT:
 		engineState = PGS_Quit;
@@ -1602,10 +1681,10 @@ static const char h_saveload[] = "Game options are overloading global options";
 
 static menu_entry e_menu_main[] =
 {
-	mee_label     ("PicoDrive " VERSION),
-	mee_label     (""),
+	mee_label     ("PicoDrive v.1.0.0 PS3"),
 	mee_label     (""),
 	mee_handler_id("Resume game",        MA_MAIN_RESUME_GAME, main_menu_handler),
+	mee_handler_id("Main menu",          MA_MAIN_MAIN_MENU,   main_menu_handler),
 	mee_handler_id("Save state",         MA_MAIN_SAVE_STATE,  main_menu_handler),
 	mee_handler_id("Load state",         MA_MAIN_LOAD_STATE,  main_menu_handler),
 	mee_handler_id("Reset game",         MA_MAIN_RESET_GAME,  main_menu_handler),
@@ -1629,13 +1708,14 @@ void menu_loop(void)
 	static int sel = 0;
 
 	me_enable(e_menu_main, MA_MAIN_RESUME_GAME, PicoGameLoaded);
+	me_enable(e_menu_main, MA_MAIN_MAIN_MENU,   PicoGameLoaded);
 	me_enable(e_menu_main, MA_MAIN_SAVE_STATE,  PicoGameLoaded);
 	me_enable(e_menu_main, MA_MAIN_LOAD_STATE,  PicoGameLoaded);
 	me_enable(e_menu_main, MA_MAIN_RESET_GAME,  PicoGameLoaded);
-	me_enable(e_menu_main, MA_MAIN_CHANGE_CD,   PicoIn.AHW & PAHW_MCD);
-	me_enable(e_menu_main, MA_MAIN_LOAD_TAPE,   PicoIn.AHW & PAHW_SC);
+	me_enable(e_menu_main, MA_MAIN_CHANGE_CD,   PicoGameLoaded && (PicoIn.AHW & PAHW_MCD));
+	me_enable(e_menu_main, MA_MAIN_LOAD_TAPE,   PicoGameLoaded && (PicoIn.AHW & PAHW_SC));
 	me_enable(e_menu_main, MA_MAIN_SAVE_TAPE,   0);
-	me_enable(e_menu_main, MA_MAIN_PICO_PAGE,   PicoIn.AHW & PAHW_PICO);
+	me_enable(e_menu_main, MA_MAIN_PICO_PAGE,   PicoGameLoaded && (PicoIn.AHW & PAHW_PICO));
 	me_enable(e_menu_main, MA_MAIN_PATCHES,     PicoPatches != NULL);
 	me_enable(e_menu_main, MA_OPT_SAVECFG_GAME, PicoGameLoaded);
 	me_enable(e_menu_main, MA_OPT_LOADCFG,      PicoGameLoaded && config_slot != config_slot_current);
@@ -1798,6 +1878,9 @@ void menu_init(void)
 #if defined(_SVP_DRC) || defined(DRC_SH2)
 	i = 1;
 #endif
+#ifdef __PS3__
+	i = 0;
+#endif
 	me_enable(e_menu_adv_options, MA_OPT2_DYNARECS, i);
 
 	i = me_id2offset(e_menu_gfx_options, MA_OPT_VOUT_MODE);
@@ -1822,4 +1905,10 @@ void menu_init(void)
 	// suppress warnings about unused libpicofe funcs
 	(void)me_loop;
 	(void)menu_loop_romsel;
+#ifdef __PS3__
+	{
+		void ps3_plog(const char *msg);
+		ps3_plog("menu_init_done");
+	}
+#endif
 }
