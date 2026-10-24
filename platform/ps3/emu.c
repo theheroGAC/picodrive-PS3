@@ -10,6 +10,7 @@
 #include <sys/event_queue.h>
 #include <sys/process.h>
 #include <sysutil/sysutil.h>
+#include <rsx/gcm_sys.h>
 #include <SDL2/SDL.h>
 #include "in_ps3.h"
 #include "../libpicofe/input.h"
@@ -617,24 +618,6 @@ static void ps3_menu_rect(SDL_Rect *r)
 	}
 }
 
-static void ps3_clear_screen(void)
-{
-	SDL_Rect r;
-
-	if (!g_ren)
-		return;
-	if (g_bg_tex) {
-		r.x = 0;
-		r.y = 0;
-		r.w = g_out_w;
-		r.h = g_out_h;
-		SDL_RenderCopy(g_ren, g_bg_tex, NULL, &r);
-		return;
-	}
-	SDL_SetRenderDrawColor(g_ren, 0, 0, 0, 255);
-	SDL_RenderClear(g_ren);
-}
-
 static void ps3_clear_borders(const SDL_Rect *dr)
 {
 	SDL_Rect r;
@@ -707,8 +690,7 @@ void plat_video_flip(void)
 	SDL_UpdateTexture(g_screen_tex, NULL, active_buf, out_w * 2);
 	ps3_game_rect(&dr);
 
-	SDL_SetRenderDrawColor(g_ren, 0, 0, 0, 255);
-	ps3_clear_screen();
+	ps3_clear_borders(&dr);
 	SDL_RenderCopy(g_ren, g_screen_tex, NULL, &dr);
 	SDL_RenderPresent(g_ren);
 	ps3_check_sysutil();
@@ -771,11 +753,13 @@ void ps3_menu_idle_flip(int ms)
 
 	ps3_check_sysutil();
 	if (!xmb_exit_requested && in_menu_active && (xmb_menu_open || was_open) && g_ren && g_menu_tex && g_menuscreen_ptr) {
-		was_open = xmb_menu_open;
-		ps3_menu_rect(&dr);
-		ps3_clear_borders(&dr);
-		SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
-		SDL_RenderPresent(g_ren);
+		if (gcmGetFlipStatus() == 0 || !xmb_menu_open) {
+			was_open = xmb_menu_open;
+			ps3_menu_rect(&dr);
+			ps3_clear_borders(&dr);
+			SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
+			SDL_RenderPresent(g_ren);
+		}
 	}
 	if (ms > 0)
 		usleep(ms * 1000);
