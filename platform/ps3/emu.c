@@ -368,6 +368,7 @@ static void sysutil_cb(u64 status, u64 param, void *usrdata)
 		xmb_menu_open = 1;
 		break;
 	case SYSUTIL_MENU_CLOSE:
+	case SYSUTIL_DRAW_END:
 		xmb_menu_open = 0;
 		break;
 	default:
@@ -742,22 +743,35 @@ void plat_video_menu_end(void)
 
 	ps3_clear_borders(&dr);
 	SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
+	gcmResetFlipStatus();
 	SDL_RenderPresent(g_ren);
 	ps3_check_sysutil();
 }
 
 void ps3_menu_idle_flip(int ms)
 {
-	static int was_open = 0;
+	static int open_frames = 0;
 	SDL_Rect dr;
 
 	ps3_check_sysutil();
-	if (!xmb_exit_requested && in_menu_active && (xmb_menu_open || was_open) && g_ren && g_menu_tex && g_menuscreen_ptr) {
-		if (gcmGetFlipStatus() == 0 || !xmb_menu_open) {
-			was_open = xmb_menu_open;
+	if (!xmb_exit_requested && in_menu_active && g_ren && g_menu_tex && g_menuscreen_ptr) {
+		if (xmb_menu_open) {
+			if (gcmGetFlipStatus() == 0) {
+				if (open_frames < 2) {
+					ps3_menu_rect(&dr);
+					ps3_clear_borders(&dr);
+					SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
+					open_frames++;
+				}
+				gcmResetFlipStatus();
+				SDL_RenderPresent(g_ren);
+			}
+		} else if (open_frames > 0) {
+			open_frames = 0;
 			ps3_menu_rect(&dr);
 			ps3_clear_borders(&dr);
 			SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
+			gcmResetFlipStatus();
 			SDL_RenderPresent(g_ren);
 		}
 	}
