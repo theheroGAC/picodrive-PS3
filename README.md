@@ -39,12 +39,13 @@ It can run games developed for most consumer hardware released by SEGA, up to an
 - **Hardware-Accelerated RSX / SDL2 Video**: Smooth bilinear filtering, integer scaling, 4:3 aspect ratio, widescreen mode, and native 5× centered scaling for Game Gear games.
 - **Integrated ROM Browser**: Fast file selector supporting `/dev_hdd0/picodrive/roms`, `/dev_hdd0/game/PICO00001/USRDIR/roms`, and external USB storage (`/dev_usb000`, `/dev_usb001`).
 - **DualShock 3 Controls**:
-  - **D-Pad / Left Stick**: Directional Controls
-  - **Cross / Square / Circle**: B / A / C (or 6-button mappings)
-  - **Triangle**: Switch renderer / display mode
+  - **D-Pad**: Directional Controls (Up, Down, Left, Right)
+  - **Square / Cross / Circle**: Mega Drive A / B / C
+  - **L1 / Triangle / R1**: Mega Drive X / Y / Z (6-button games & fighting games)
+  - **L3**: Mega Drive MODE button
+  - **L2 / R2**: Quick Save / Load State
   - **Start**: Start button
   - **Select**: In-game Emulator Menu
-  - **L1 / R1**: Quick Save / Load State
   - **PS Button**: Clean exit to XMB with SysUtil event handling.
 
 ---

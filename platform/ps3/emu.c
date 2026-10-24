@@ -50,11 +50,14 @@ static struct in_default_bind in_ps3_defbinds_list[] =
 	{ PS3_PAD_SQUARE,      IN_BINDTYPE_PLAYER12, GBTN_A },
 	{ PS3_PAD_CROSS,       IN_BINDTYPE_PLAYER12, GBTN_B },
 	{ PS3_PAD_CIRCLE,      IN_BINDTYPE_PLAYER12, GBTN_C },
+	{ PS3_PAD_TRIANGLE,    IN_BINDTYPE_PLAYER12, GBTN_Y },
+	{ PS3_PAD_L1,          IN_BINDTYPE_PLAYER12, GBTN_X },
+	{ PS3_PAD_R1,          IN_BINDTYPE_PLAYER12, GBTN_Z },
+	{ PS3_PAD_L2,          IN_BINDTYPE_EMU,      PEVB_STATE_SAVE },
+	{ PS3_PAD_R2,          IN_BINDTYPE_EMU,      PEVB_STATE_LOAD },
+	{ PS3_PAD_L3,          IN_BINDTYPE_PLAYER12, GBTN_MODE },
 	{ PS3_PAD_START,       IN_BINDTYPE_PLAYER12, GBTN_START },
-	{ PS3_PAD_TRIANGLE,    IN_BINDTYPE_EMU, PEVB_SWITCH_RND },
-	{ PS3_PAD_L1,          IN_BINDTYPE_EMU, PEVB_STATE_SAVE },
-	{ PS3_PAD_R1,          IN_BINDTYPE_EMU, PEVB_STATE_LOAD },
-	{ PS3_PAD_SELECT,      IN_BINDTYPE_EMU, PEVB_MENU },
+	{ PS3_PAD_SELECT,      IN_BINDTYPE_EMU,      PEVB_MENU },
 	{ 0, 0, 0 }
 };
 
@@ -813,8 +816,11 @@ void pemu_forced_frame(int no_scale, int do_emu)
 
 void plat_video_toggle_renderer(int change, int is_menu_call)
 {
-	apply_renderer();
-	calc_screen_quad();
+	if (!change) {
+		apply_renderer();
+		plat_video_set_buffer(g_screen_ptr);
+		calc_screen_quad();
+	}
 }
 
 void plat_video_set_buffer(void *buf)
@@ -825,6 +831,7 @@ void plat_video_set_buffer(void *buf)
 void plat_video_loop_prepare(void)
 {
 	apply_renderer();
+	plat_video_set_buffer(g_screen_ptr);
 	calc_screen_quad();
 }
 
