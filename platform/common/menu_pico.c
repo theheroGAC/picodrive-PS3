@@ -1347,7 +1347,7 @@ static void draw_frame_credits(void)
 }
 
 static const char credits[] =
-	"PicoDrive v.1.0.0 PS3\n"
+	"PicoDrive v.1.0.1 PS3\n"
 	"(c) notaz, 2006-2013; irixxxx, 2018-2024\n"
 	"Port PS3 by theheroGAC 2026\n"
 	"PS3 dynarec by OsirisX\n\n"
@@ -1366,8 +1366,8 @@ static const char credits[] =
 	"MAME devs: SH2, YM2612 and SN76496 cores\n"
 	"Eke, Stef: some Sega CD code\n"
 	"Inder, ketchupgun: graphics\n"
-	"PS3 scene: Evilnat, Aldo Vargas,\n"
-	" Joonie, TheRouLetteBoi (Cobra/PS3MAPI)\n"
+	"PS3 scene: Team REBUG, Evilnat,\n"
+	" Aldo Vargas, Joonie, OsirisX\n"
 #ifdef __GP2X__
 	"Squidge: mmuhack\n"
 	"Dzz: ARM940 sample\n"
@@ -1684,7 +1684,7 @@ static const char h_saveload[] = "Game options are overloading global options";
 
 static menu_entry e_menu_main[] =
 {
-	mee_label     ("PicoDrive v.1.0.0 PS3"),
+	mee_label     ("PicoDrive v.1.0.1 PS3"),
 	mee_label     (""),
 	mee_handler_id("Resume game",        MA_MAIN_RESUME_GAME, main_menu_handler),
 	mee_handler_id("Main menu",          MA_MAIN_MAIN_MENU,   main_menu_handler),

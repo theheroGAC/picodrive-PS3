@@ -1,4 +1,4 @@
-# PicoDrive PS3 (v.1.0.0)
+# PicoDrive PS3 (v.1.0.1)
 
 Port of **PicoDrive** for the **PlayStation 3** (PS3) using the PSL1GHT SDK.
 
@@ -18,7 +18,7 @@ PicoDrive was created and developed over more than two decades by exceptional de
 - **Stef & NJ**: CZ80 Z80 emulation core.
 - **MAME Team**: SH-2, YM2612 (FM audio), and SN76496 (PSG) cores.
 - **OsirisX**: PlayStation 3 Dynarec breakthrough via PS3MAPI executable page allocation and PowerPC SH-2 TOC/ABI research.
-- **Evilnat, Aldo Vargas (aldostools), Joonie, TheRouLetteBoi**: Cobra CFW, Mamba, and PS3MAPI kernel payload development, enabling userland executable memory allocation (`PAGE_ALLOCATE`).
+- **Team REBUG, Evilnat, Aldo Vargas (aldostools), Joonie, TheRouLetteBoi**: Cobra CFW, Mamba, and PS3MAPI kernel payload development, enabling userland executable memory allocation (`PAGE_ALLOCATE`).
 - **theheroGAC**: PlayStation 3 port (2026), PSL1GHT SDL2 integration, RSX rendering, 48 kHz dynamic drift audio engine, 32X PWM audio balance, and PS3MAPI dynamic fallback.
 
 ---
