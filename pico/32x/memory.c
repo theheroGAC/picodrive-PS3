@@ -2504,6 +2504,7 @@ void PicoMemSetup32x(void)
 
   sh2_drc_mem_setup(&msh2);
   sh2_drc_mem_setup(&ssh2);
+  memset(&m68k_poll, 0, sizeof(m68k_poll));
   memset(sh2_poll_rd, 0, sizeof(sh2_poll_rd));
   memset(sh2_poll_wr, 0, sizeof(sh2_poll_wr));
   memset(sh2_poll_fifo, -1, sizeof(sh2_poll_fifo));

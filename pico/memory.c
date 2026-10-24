@@ -1074,6 +1074,9 @@ PICO_INTERNAL void PicoMemSetup(void)
 {
   int mask, rs, sstart, a;
 
+  memset(padTHLatency, 0, sizeof(padTHLatency));
+  memset(padTLLatency, 0, sizeof(padTLLatency));
+
   // setup the memory map
   cpu68k_map_set(m68k_read8_map,   0x000000, 0xffffff, m68k_unmapped_read8, 1);
   cpu68k_map_set(m68k_read16_map,  0x000000, 0xffffff, m68k_unmapped_read16, 1);

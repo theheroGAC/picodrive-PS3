@@ -215,9 +215,14 @@ void Pico32xInit(void)
 {
 }
 
+unsigned int p32x_event_times[P32X_EVENT_COUNT];
+static unsigned int event_time_next;
+
 void PicoPower32x(void)
 {
   memset(&Pico32x, 0, sizeof(Pico32x));
+  memset(p32x_event_times, 0, sizeof(p32x_event_times));
+  event_time_next = 0;
 
   Pico32x.regs[0] = P32XS_REN|P32XS_nRES; // verified
   Pico32x.regs[0x10/2] = 0xffff;
@@ -380,8 +385,6 @@ static void hint_event(unsigned int now)
 typedef void (event_cb)(unsigned int now);
 
 /* times are in m68k (7.6MHz) cycles */
-unsigned int p32x_event_times[P32X_EVENT_COUNT];
-static unsigned int event_time_next;
 static event_cb *p32x_event_cbs[P32X_EVENT_COUNT] = {
   p32x_pwm_irq_event, // P32X_EVENT_PWM
   fillend_event,      // P32X_EVENT_FILLEND
