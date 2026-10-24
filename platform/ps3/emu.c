@@ -357,18 +357,30 @@ static int xmb_exit_done = 0;
 
 static void sysutil_cb(u64 status, u64 param, void *usrdata)
 {
-	if (status == SYSUTIL_EXIT_GAME)
+	switch (status) {
+	case SYSUTIL_EXIT_GAME:
 		xmb_exit_requested = 1;
+		break;
+	default:
+		break;
+	}
 }
 
-static void ps3_check_sysutil(void)
+void ps3_check_sysutil(void)
 {
 	sysUtilCheckCallback();
 	if (xmb_exit_requested && !xmb_exit_done) {
 		xmb_exit_done = 1;
+		pemu_sound_stop();
 		emu_finish();
-		sysProcessExit(0);
+		plat_finish();
 	}
+}
+
+void ps3_drc_disable(void)
+{
+	currentConfig.s_PicoOpt &= ~POPT_EN_DRC;
+	PicoIn.opt &= ~POPT_EN_DRC;
 }
 
 void ps3_sdl_render_cp(const char *what)
@@ -478,6 +490,8 @@ static void video_init(void)
 	g_menubg_src_pp = 328;
 
 	calc_screen_quad();
+	sysUtilUnregisterCallback(SYSUTIL_EVENT_SLOT0);
+	sysUtilRegisterCallback(SYSUTIL_EVENT_SLOT0, sysutil_cb, NULL);
 }
 
 void ps3_early_video(void)
@@ -619,7 +633,7 @@ void plat_video_flip(void)
 	SDL_Rect dr;
 	int y;
 
-	if (!src || !g_ren)
+	if (xmb_exit_requested || !src || !g_ren)
 		return;
 
 	if (out_w <= 0 || out_h <= 0 || out_w > 328 || out_h > 256) {
@@ -686,7 +700,7 @@ void plat_video_menu_end(void)
 	static int first_flip;
 	SDL_Rect dr;
 
-	if (!g_menuscreen_ptr || !g_menu_tex || !g_ren)
+	if (xmb_exit_requested || !g_menuscreen_ptr || !g_menu_tex || !g_ren)
 		return;
 
 	if (!first_flip++)
@@ -699,6 +713,23 @@ void plat_video_menu_end(void)
 	ps3_clear_screen();
 	SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
 	SDL_RenderPresent(g_ren);
+	ps3_check_sysutil();
+}
+
+void ps3_menu_idle_flip(int ms)
+{
+	SDL_Rect dr;
+
+	ps3_check_sysutil();
+	if (!xmb_exit_requested && g_ren && g_menu_tex && g_menuscreen_ptr) {
+		ps3_menu_rect(&dr);
+		SDL_SetRenderDrawColor(g_ren, 0, 0, 0, 255);
+		ps3_clear_screen();
+		SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
+		SDL_RenderPresent(g_ren);
+	}
+	if (ms > 0)
+		usleep(ms * 1000);
 	ps3_check_sysutil();
 }
 
@@ -726,15 +757,8 @@ void pemu_prep_defconfig(void)
 
 void pemu_validate_config(void)
 {
-	if (plat_mem_get_for_drc(4 * 1024 * 1024) != NULL) {
-		currentConfig.s_PicoOpt |= POPT_EN_DRC;
-		PicoIn.opt |= POPT_EN_DRC;
-	} else {
-		currentConfig.s_PicoOpt &= ~POPT_EN_DRC;
-		PicoIn.opt &= ~POPT_EN_DRC;
-	}
-	currentConfig.s_PicoOpt |= POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
-	PicoIn.opt |= POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
+	currentConfig.s_PicoOpt |= POPT_EN_DRC | POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
+	PicoIn.opt |= POPT_EN_DRC | POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
 	currentConfig.Frameskip = 0;
 	currentConfig.max_skip = 0;
 	if (!(currentConfig.EmuOpt & EOPT_EN_SOUND)) {
@@ -746,6 +770,7 @@ void pemu_validate_config(void)
 
 void plat_init(void)
 {
+	sysUtilUnregisterCallback(SYSUTIL_EVENT_SLOT0);
 	sysUtilRegisterCallback(SYSUTIL_EVENT_SLOT0, sysutil_cb, NULL);
 	in_ps3_init(in_ps3_defbinds_list);
 	in_probe();
@@ -758,7 +783,10 @@ void plat_init(void)
 
 void plat_finish(void)
 {
+	pemu_sound_stop();
+	sound_deinit();
 	plat_mem_free_for_drc();
+	ioPadEnd();
 	sysUtilUnregisterCallback(SYSUTIL_EVENT_SLOT0);
 	sysProcessExit(0);
 }

@@ -177,18 +177,23 @@ unsigned int plat_get_ticks_us(void)
 	return (unsigned int)(tv.tv_sec * 1000000 + tv.tv_usec);
 }
 
+void ps3_check_sysutil(void);
+void ps3_menu_idle_flip(int ms);
+void ps3_drc_disable(void);
+
 void plat_wait_till_us(unsigned int us_to)
 {
 	unsigned int ticks = plat_get_ticks_us();
-	sysUtilCheckCallback();
+	ps3_check_sysutil();
 	if (us_to > ticks)
 		usleep(us_to - ticks);
 }
 
 void plat_sleep_ms(int ms)
 {
-	sysUtilCheckCallback();
+	ps3_check_sysutil();
 	usleep(ms * 1000);
+	ps3_check_sysutil();
 }
 
 int plat_wait_event(int *fds_hnds, int count, int timeout_ms)
@@ -196,7 +201,7 @@ int plat_wait_event(int *fds_hnds, int count, int timeout_ms)
 	int ms = 15;
 	if (timeout_ms >= 0 && timeout_ms < ms)
 		ms = timeout_ms;
-	plat_sleep_ms(ms);
+	ps3_menu_idle_flip(ms);
 	return 0;
 }
 
@@ -253,6 +258,7 @@ int plat_mem_set_exec(void *ptr, size_t size)
 {
 	if (ptr != NULL && g_drc_page_table[0] != 0 && (uint64_t)ptr == g_drc_page_table[0])
 		return 0;
+	ps3_drc_disable();
 	return -1;
 }
 
