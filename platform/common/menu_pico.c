@@ -1349,7 +1349,8 @@ static void draw_frame_credits(void)
 static const char credits[] =
 	"PicoDrive v.1.0.0 PS3\n"
 	"(c) notaz, 2006-2013; irixxxx, 2018-2024\n"
-	"Port PS3 by theheroGAC 2026\n\n"
+	"Port PS3 by theheroGAC 2026\n"
+	"PS3 dynarec by OsirisX\n\n"
 	"Credits:\n"
 	"fDave: initial code\n"
 #ifdef EMU_C68K
@@ -1365,6 +1366,8 @@ static const char credits[] =
 	"MAME devs: SH2, YM2612 and SN76496 cores\n"
 	"Eke, Stef: some Sega CD code\n"
 	"Inder, ketchupgun: graphics\n"
+	"PS3 scene: Evilnat, Aldo Vargas,\n"
+	" Joonie, TheRouLetteBoi (Cobra/PS3MAPI)\n"
 #ifdef __GP2X__
 	"Squidge: mmuhack\n"
 	"Dzz: ARM940 sample\n"

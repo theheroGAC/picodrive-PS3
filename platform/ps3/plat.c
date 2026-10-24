@@ -11,6 +11,8 @@
 #include <errno.h>
 #include <io/pad.h>
 #include <sysutil/sysutil.h>
+#include <ppu-lv2.h>
+#include <sys/process.h>
 #include "../libpicofe/plat.h"
 
 static int sound_rates[] = { 11025, 22050, 44100, 48000, -1 };
@@ -213,14 +215,60 @@ void plat_munmap(void *ptr, size_t size)
 	free(ptr);
 }
 
+#define SYSCALL8_OPCODE_PS3MAPI 0x7777
+#define PS3MAPI_OPCODE_PROC_PAGE_ALLOCATE 0x0033
+#define PS3MAPI_OPCODE_PROC_PAGE_FREE 0x0034
+#define PAGE_SIZE_AUTO 0
+
+static uint64_t g_drc_page_table[2] = {0, 0};
+
+static int ps3mapi_page_allocate(sys_pid_t pid, uint64_t size, uint64_t page_size, uint64_t flags, uint64_t is_executable, uint64_t *page_table)
+{
+	lv2syscall8(8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_PROC_PAGE_ALLOCATE, (uint64_t)pid, (uint64_t)size, (uint64_t)page_size, (uint64_t)flags, (uint64_t)is_executable, (uint64_t)page_table);
+	return_to_user_prog(s32);
+}
+
+static int ps3mapi_page_free(sys_pid_t pid, uint64_t flags, uint64_t *page_table)
+{
+	lv2syscall5(8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_PROC_PAGE_FREE, (uint64_t)pid, (uint64_t)flags, (uint64_t)page_table);
+	return_to_user_prog(s32);
+}
+
 void *plat_mem_get_for_drc(size_t size)
 {
+	if (g_drc_page_table[0] != 0)
+		return (void *)g_drc_page_table[0];
+
+	sys_pid_t pid = sysProcessGetPid();
+	int ret = ps3mapi_page_allocate(pid, size, PAGE_SIZE_AUTO, 0x2F, 1, g_drc_page_table);
+	if (ret == 0 && g_drc_page_table[0] != 0)
+		return (void *)g_drc_page_table[0];
+
+	g_drc_page_table[0] = 0;
+	g_drc_page_table[1] = 0;
 	return NULL;
 }
 
 int plat_mem_set_exec(void *ptr, size_t size)
 {
-	return 0;
+	if (ptr != NULL && g_drc_page_table[0] != 0 && (uint64_t)ptr == g_drc_page_table[0])
+		return 0;
+	return -1;
+}
+
+void plat_mem_free_for_drc(void)
+{
+	if (g_drc_page_table[0] != 0 && g_drc_page_table[1] != 0) {
+		sys_pid_t pid = sysProcessGetPid();
+		ps3mapi_page_free(pid, 0x2F, g_drc_page_table);
+		g_drc_page_table[0] = 0;
+		g_drc_page_table[1] = 0;
+	}
+}
+
+int plat_drc_supported(void)
+{
+	return (g_drc_page_table[0] != 0);
 }
 
 void lprintf(const char *fmt, ...)

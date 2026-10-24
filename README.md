@@ -17,7 +17,9 @@ PicoDrive was created and developed over more than two decades by exceptional de
 - **Reesy & FluBBa**: DrZ80 Z80 emulation core.
 - **Stef & NJ**: CZ80 Z80 emulation core.
 - **MAME Team**: SH-2, YM2612 (FM audio), and SN76496 (PSG) cores.
-- **theheroGAC**: PlayStation 3 port (2026), PSL1GHT SDL2 integration, RSX rendering, 48 kHz dynamic drift audio engine, and 32X PWM audio balance.
+- **OsirisX**: PlayStation 3 Dynarec breakthrough via PS3MAPI executable page allocation and PowerPC SH-2 TOC/ABI research.
+- **Evilnat, Aldo Vargas (aldostools), Joonie, TheRouLetteBoi**: Cobra CFW, Mamba, and PS3MAPI kernel payload development, enabling userland executable memory allocation (`PAGE_ALLOCATE`).
+- **theheroGAC**: PlayStation 3 port (2026), PSL1GHT SDL2 integration, RSX rendering, 48 kHz dynamic drift audio engine, 32X PWM audio balance, and PS3MAPI dynamic fallback.
 
 ---
 

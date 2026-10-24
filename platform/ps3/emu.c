@@ -21,6 +21,8 @@
 #include <pico/pico_int.h>
 
 void ps3_diag_set(int stage, const char *msg);
+void *plat_mem_get_for_drc(size_t size);
+void plat_mem_free_for_drc(void);
 
 #define PS3_PAD_UP        (1 << 0)
 #define PS3_PAD_DOWN      (1 << 1)
@@ -715,15 +717,19 @@ void pemu_prep_defconfig(void)
 	defaultConfig.Frameskip = 0;
 	defaultConfig.max_skip = 0;
 	defaultConfig.EmuOpt |= EOPT_SHOW_RTC | EOPT_EN_SOUND;
-	defaultConfig.s_PicoOpt &= ~POPT_EN_DRC;
-	defaultConfig.s_PicoOpt |= POPT_EN_MCD_PCM | POPT_EN_MCD_CDDA | POPT_EN_MCD_GFX | POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
+	defaultConfig.s_PicoOpt |= POPT_EN_DRC | POPT_EN_MCD_PCM | POPT_EN_MCD_CDDA | POPT_EN_MCD_GFX | POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
 	ps3_plog("defconfig_done");
 }
 
 void pemu_validate_config(void)
 {
-	currentConfig.s_PicoOpt &= ~POPT_EN_DRC;
-	PicoIn.opt &= ~POPT_EN_DRC;
+	if (plat_mem_get_for_drc(4 * 1024 * 1024) != NULL) {
+		currentConfig.s_PicoOpt |= POPT_EN_DRC;
+		PicoIn.opt |= POPT_EN_DRC;
+	} else {
+		currentConfig.s_PicoOpt &= ~POPT_EN_DRC;
+		PicoIn.opt &= ~POPT_EN_DRC;
+	}
 	currentConfig.s_PicoOpt |= POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
 	PicoIn.opt |= POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
 	currentConfig.Frameskip = 0;
@@ -749,6 +755,7 @@ void plat_init(void)
 
 void plat_finish(void)
 {
+	plat_mem_free_for_drc();
 	sysUtilUnregisterCallback(SYSUTIL_EVENT_SLOT0);
 	sysProcessExit(0);
 }
