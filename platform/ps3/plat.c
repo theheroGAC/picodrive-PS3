@@ -191,9 +191,7 @@ void plat_wait_till_us(unsigned int us_to)
 
 void plat_sleep_ms(int ms)
 {
-	ps3_check_sysutil();
-	usleep(ms * 1000);
-	ps3_check_sysutil();
+	ps3_menu_idle_flip(ms);
 }
 
 int plat_wait_event(int *fds_hnds, int count, int timeout_ms)

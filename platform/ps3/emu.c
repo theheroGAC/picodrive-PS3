@@ -682,15 +682,19 @@ void plat_video_menu_update(void)
 {
 }
 
+static int in_menu_active = 0;
+
 void plat_video_menu_enter(int is_rom_loaded)
 {
 	static int diag_once;
+	in_menu_active = 1;
 	if (!diag_once++)
 		ps3_diag_set(9, "menu_enter");
 }
 
 void plat_video_menu_begin(void)
 {
+	in_menu_active = 1;
 	if (g_menubg_ptr && g_menuscreen_ptr)
 		memcpy(g_menuscreen_ptr, g_menubg_ptr, 848 * 512 * 2);
 }
@@ -703,6 +707,7 @@ void plat_video_menu_end(void)
 	if (xmb_exit_requested || !g_menuscreen_ptr || !g_menu_tex || !g_ren)
 		return;
 
+	in_menu_active = 1;
 	if (!first_flip++)
 		ps3_diag_set(10, "first_flip");
 
@@ -721,7 +726,7 @@ void ps3_menu_idle_flip(int ms)
 	SDL_Rect dr;
 
 	ps3_check_sysutil();
-	if (!xmb_exit_requested && g_ren && g_menu_tex && g_menuscreen_ptr) {
+	if (!xmb_exit_requested && in_menu_active && g_ren && g_menu_tex && g_menuscreen_ptr) {
 		ps3_menu_rect(&dr);
 		SDL_SetRenderDrawColor(g_ren, 0, 0, 0, 255);
 		ps3_clear_screen();
@@ -735,6 +740,7 @@ void ps3_menu_idle_flip(int ms)
 
 void plat_video_menu_leave(void)
 {
+	in_menu_active = 0;
 	g_screen_ptr = g_screens[g_screen_index];
 	plat_video_set_buffer(g_screen_ptr);
 }
