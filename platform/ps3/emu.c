@@ -353,6 +353,7 @@ static void apply_renderer(void)
 }
 
 static volatile int xmb_exit_requested = 0;
+static volatile int xmb_menu_open = 0;
 static int xmb_exit_done = 0;
 
 static void sysutil_cb(u64 status, u64 param, void *usrdata)
@@ -360,6 +361,13 @@ static void sysutil_cb(u64 status, u64 param, void *usrdata)
 	switch (status) {
 	case SYSUTIL_EXIT_GAME:
 		xmb_exit_requested = 1;
+		break;
+	case SYSUTIL_MENU_OPEN:
+	case SYSUTIL_DRAW_BEGIN:
+		xmb_menu_open = 1;
+		break;
+	case SYSUTIL_MENU_CLOSE:
+		xmb_menu_open = 0;
 		break;
 	default:
 		break;
@@ -627,6 +635,42 @@ static void ps3_clear_screen(void)
 	SDL_RenderClear(g_ren);
 }
 
+static void ps3_clear_borders(const SDL_Rect *dr)
+{
+	SDL_Rect r;
+
+	if (!g_ren || !g_bg_tex || !dr)
+		return;
+	if (dr->x > 0) {
+		r.x = 0;
+		r.y = 0;
+		r.w = dr->x;
+		r.h = g_out_h;
+		SDL_RenderCopy(g_ren, g_bg_tex, NULL, &r);
+	}
+	if (dr->x + dr->w < g_out_w) {
+		r.x = dr->x + dr->w;
+		r.y = 0;
+		r.w = g_out_w - (dr->x + dr->w);
+		r.h = g_out_h;
+		SDL_RenderCopy(g_ren, g_bg_tex, NULL, &r);
+	}
+	if (dr->y > 0) {
+		r.x = dr->x;
+		r.y = 0;
+		r.w = dr->w;
+		r.h = dr->y;
+		SDL_RenderCopy(g_ren, g_bg_tex, NULL, &r);
+	}
+	if (dr->y + dr->h < g_out_h) {
+		r.x = dr->x;
+		r.y = dr->y + dr->h;
+		r.w = dr->w;
+		r.h = g_out_h - (dr->y + dr->h);
+		SDL_RenderCopy(g_ren, g_bg_tex, NULL, &r);
+	}
+}
+
 void plat_video_flip(void)
 {
 	unsigned short *src = (unsigned short *)g_screen_ptr;
@@ -714,8 +758,7 @@ void plat_video_menu_end(void)
 	SDL_UpdateTexture(g_menu_tex, NULL, g_menuscreen_ptr, 848 * 2);
 	ps3_menu_rect(&dr);
 
-	SDL_SetRenderDrawColor(g_ren, 0, 0, 0, 255);
-	ps3_clear_screen();
+	ps3_clear_borders(&dr);
 	SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
 	SDL_RenderPresent(g_ren);
 	ps3_check_sysutil();
@@ -723,13 +766,14 @@ void plat_video_menu_end(void)
 
 void ps3_menu_idle_flip(int ms)
 {
+	static int was_open = 0;
 	SDL_Rect dr;
 
 	ps3_check_sysutil();
-	if (!xmb_exit_requested && in_menu_active && g_ren && g_menu_tex && g_menuscreen_ptr) {
+	if (!xmb_exit_requested && in_menu_active && (xmb_menu_open || was_open) && g_ren && g_menu_tex && g_menuscreen_ptr) {
+		was_open = xmb_menu_open;
 		ps3_menu_rect(&dr);
-		SDL_SetRenderDrawColor(g_ren, 0, 0, 0, 255);
-		ps3_clear_screen();
+		ps3_clear_borders(&dr);
 		SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
 		SDL_RenderPresent(g_ren);
 	}
