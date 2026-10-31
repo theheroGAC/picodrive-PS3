@@ -1013,7 +1013,12 @@ static int mh_profile(int id, int keys) {
 		currentConfig.renderer = find_renderer(renderer_names, "16bit");
 		currentConfig.renderer32x = find_renderer(renderer_names32x, "accurate");
 		PicoIn.sndRate = 44100;
+#ifdef __PS3__
+		PicoIn.opt |= POPT_EN_FM | POPT_EN_MCD_CDDA;
+		PicoIn.opt &= ~POPT_EN_FM_FILTER;
+#else
 		PicoIn.opt |= POPT_EN_FM_FILTER | POPT_EN_FM | POPT_EN_MCD_CDDA;
+#endif
 		PicoIn.opt &= ~POPT_PWM_IRQ_OPT;
 		break;
 	case MA_PROFILE_BALANCED:
@@ -1911,6 +1916,12 @@ void menu_init(void)
 #ifdef __PS3__
 	{
 		void ps3_plog(const char *msg);
+		me_enable(e_menu_gfx_options, MA_OPT3_FILTERING, 0);
+		me_enable(e_menu_md_options, MA_OPT_FM_FILTER, 0);
+		me_enable(e_menu_snd_options, MA_OPT_SOUND_FILTER, 0);
+		me_enable(e_menu_snd_options, MA_OPT_SOUND_ALPHA, 0);
+		me_enable(e_menu_sms_options, MA_SMSOPT_GHOSTING, 0);
+		me_enable(e_menu_keyconfig, MA_CTRL_DEADZONE, 1);
 		ps3_plog("menu_init_done");
 	}
 #endif

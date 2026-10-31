@@ -59,6 +59,8 @@ void plat_early_init(void)
 	}
 	mkdir("/dev_hdd0/picodrive", 0777);
 	mkdir("/dev_hdd0/picodrive/roms", 0777);
+	mkdir("/dev_hdd0/picodrive/bios", 0777);
+	mkdir("/dev_hdd0/game/PICO00001/USRDIR/bios", 0777);
 	ps3_diag_set(5, "fs_ok");
 }
 

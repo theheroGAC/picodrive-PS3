@@ -169,21 +169,200 @@ void emu_status_msg(const char *format, ...)
 }
 
 static const char * const biosfiles_us[] = {
-	"us_scd2_9306", "SegaCDBIOS9303", "us_scd1_9210", "bios_CD_U"
+	"bios_CD_U", "us_scd2_9306", "SegaCDBIOS9303", "us_scd1_9210",
+	"us_scd2_9303", "scd_110", "scd_200", "scd_211", "sega_101", "sega_100",
+	"mpr-15045b", "mpr-15764-t", "segacd_model1_bios_1_10_u",
+	"segacd_model2_bios_2_00_u", "segacd_model2_bios_2_00w_u",
+	"segacd_model2_bios_2_11x_u", "bios_u", "us_bios", "scd_bios_u",
+	"segacd", "sega_cd", "bios_cd"
 };
 static const char * const biosfiles_eu[] = {
-	"eu_mcd2_9306", "eu_mcd2_9303", "eu_mcd1_9210", "bios_CD_E"
+	"bios_CD_E", "eu_mcd2_9306", "eu_mcd2_9303", "eu_mcd1_9210",
+	"e_mcd1_9210", "mcd_100", "mcd_200", "megacd_model1_bios_1_00_e",
+	"megacd_model2_bios_2_00_e", "megacd_model2_bios_2_00w_e",
+	"bios_e", "eu_bios", "mcd_bios_e", "megacd", "mega_cd", "mega-cd"
 };
 static const char * const biosfiles_jp[] = {
-	"jp_mcd2_921222", "jp_mcd1_9112", "jp_mcd1_9111", "bios_CD_J"
+	"bios_CD_J", "jp_mcd2_921222", "jp_mcd1_9112", "jp_mcd1_9111",
+	"jp_mcd1_911217", "jp_mcd1_911228", "j_mcd1_9112",
+	"megacd_model1_bios_1_00_j", "megacd_model1_bios_1_00s_j",
+	"megacd_model1_bios_1_00p_j", "megacd_model1_bios_1_01_j",
+	"megacd_model1_bios_1_11_j", "megacd_model2_bios_2_00c_j",
+	"bios_j", "jp_bios", "mcd_bios_j"
 };
+
+static int bios_match_in_dir(const char *dir, const char * const *files, int count,
+	char *out_buf, size_t out_size)
+{
+	static const char * const exts[] = { ".bin", ".zip", ".md", ".smd", ".gen" };
+	DIR *d;
+	struct dirent *ent;
+	char best_name[256];
+	int best_prio = 0x7fffffff;
+	int i, e;
+	size_t dlen;
+	FILE *f;
+
+	if (!dir || !dir[0])
+		return 0;
+	d = opendir(dir);
+	if (!d)
+		return 0;
+
+	best_name[0] = 0;
+	while ((ent = readdir(d)) != NULL) {
+		const char *name = ent->d_name;
+		if (name[0] == '.')
+			continue;
+		for (i = 0; i < count; i++) {
+			size_t flen = strlen(files[i]);
+			if (strncasecmp(name, files[i], flen) != 0)
+				continue;
+			for (e = 0; e < (int)(sizeof(exts) / sizeof(exts[0])); e++) {
+				int prio = i * 8 + e;
+				if (prio < best_prio && strcasecmp(name + flen, exts[e]) == 0) {
+					best_prio = prio;
+					strncpy(best_name, name, sizeof(best_name) - 1);
+					best_name[sizeof(best_name) - 1] = 0;
+				}
+			}
+		}
+	}
+	closedir(d);
+
+	if (!best_name[0])
+		return 0;
+
+	dlen = strlen(dir);
+	if (dlen > 0 && (dir[dlen - 1] == '/' || dir[dlen - 1] == '\\'))
+		snprintf(out_buf, out_size, "%s%s", dir, best_name);
+	else
+		snprintf(out_buf, out_size, "%s/%s", dir, best_name);
+
+	f = fopen(out_buf, "rb");
+	if (f) {
+		fclose(f);
+		return 1;
+	}
+	return 0;
+}
+
+static int bios_scan_header_in_dir(const char *dir, int want_region,
+	int *found_region, char *out_buf, size_t out_size)
+{
+	static const char * const exts[] = { ".bin", ".md", ".smd", ".gen" };
+	DIR *d;
+	struct dirent *ent;
+	size_t dlen;
+
+	if (!dir || !dir[0])
+		return 0;
+	d = opendir(dir);
+	if (!d)
+		return 0;
+
+	dlen = strlen(dir);
+	while ((ent = readdir(d)) != NULL) {
+		const char *name = ent->d_name;
+		const char *dot;
+		int e, ok_ext = 0;
+		char full[512];
+		FILE *f;
+		long sz;
+		unsigned char hdr[0x100];
+
+		if (name[0] == '.')
+			continue;
+		dot = strrchr(name, '.');
+		if (!dot)
+			continue;
+		for (e = 0; e < (int)(sizeof(exts) / sizeof(exts[0])); e++) {
+			if (strcasecmp(dot, exts[e]) == 0) {
+				ok_ext = 1;
+				break;
+			}
+		}
+		if (!ok_ext)
+			continue;
+
+		if (dlen > 0 && (dir[dlen - 1] == '/' || dir[dlen - 1] == '\\'))
+			snprintf(full, sizeof(full), "%s%s", dir, name);
+		else
+			snprintf(full, sizeof(full), "%s/%s", dir, name);
+
+		f = fopen(full, "rb");
+		if (!f)
+			continue;
+		if (fseek(f, 0, SEEK_END) != 0) {
+			fclose(f);
+			continue;
+		}
+		sz = ftell(f);
+		if (sz != 0x20000) {
+			fclose(f);
+			continue;
+		}
+		if (fseek(f, 0x100, SEEK_SET) != 0 || fread(hdr, 1, sizeof(hdr), f) != sizeof(hdr)) {
+			fclose(f);
+			continue;
+		}
+		fclose(f);
+
+		if ((memcmp(hdr, "SEGA", 4) == 0 || memcmp(hdr, " SEG", 4) == 0) &&
+		    (memcmp(hdr + 0x24, "BOOT", 4) == 0 || memcmp(hdr + 0x28, "BOOT", 4) == 0)) {
+			unsigned char rch = hdr[0xf0];
+			int rgn = 4;
+			if (rch == 'E')
+				rgn = 8;
+			else if (rch == 'J')
+				rgn = 1;
+			else if (rch == 'U')
+				rgn = 4;
+
+			if (want_region == 4 && rgn != 4)
+				continue;
+			if (want_region == 8 && rgn != 8)
+				continue;
+			if ((want_region == 1 || want_region == 2) && rgn != 1)
+				continue;
+
+			if (found_region)
+				*found_region = rgn;
+			strncpy(out_buf, full, out_size - 1);
+			out_buf[out_size - 1] = 0;
+			closedir(d);
+			return 1;
+		}
+	}
+	closedir(d);
+	return 0;
+}
+
+static void get_region_bios_list(int rgn, const char * const **files, int *count)
+{
+	if (rgn == 4) {
+		*files = biosfiles_us;
+		*count = sizeof(biosfiles_us) / sizeof(char *);
+	} else if (rgn == 8) {
+		*files = biosfiles_eu;
+		*count = sizeof(biosfiles_eu) / sizeof(char *);
+	} else {
+		*files = biosfiles_jp;
+		*count = sizeof(biosfiles_jp) / sizeof(char *);
+	}
+}
 
 static const char *find_bios(int *region, const char *cd_fname)
 {
-	int i, count;
+	int i, d, count;
 	const char * const *files;
 	FILE *f = NULL;
 	int ret;
+	char cd_dir[512], cd_bios_dir[512], cd_parent_dir[512], cd_parent_bios_dir[512];
+	char root_dir[512], root_bios_dir[512], root_roms_dir[512];
+	const char *search_dirs[32];
+	int num_dirs = 0;
+	int fallback_regions[2];
 
 	// we need to have config loaded at this point
 	ret = emu_read_config(cd_fname, 0);
@@ -196,17 +375,94 @@ static const char *find_bios(int *region, const char *cd_fname)
 	}
 
 	// locate BIOS file
-	if (*region == 4) { // US
-		files = biosfiles_us;
-		count = sizeof(biosfiles_us) / sizeof(char *);
-	} else if (*region == 8) { // EU
-		files = biosfiles_eu;
-		count = sizeof(biosfiles_eu) / sizeof(char *);
-	} else if (*region == 1 || *region == 2) {
-		files = biosfiles_jp;
-		count = sizeof(biosfiles_jp) / sizeof(char *);
-	} else {
+	if (*region != 4 && *region != 8 && *region != 1 && *region != 2)
 		return 0;
+
+	get_region_bios_list(*region, &files, &count);
+
+	cd_dir[0] = cd_bios_dir[0] = cd_parent_dir[0] = cd_parent_bios_dir[0] = 0;
+	if (cd_fname && cd_fname[0]) {
+		const char *slash = strrchr(cd_fname, '/');
+		const char *bslash = strrchr(cd_fname, '\\');
+		if (bslash && (!slash || bslash > slash))
+			slash = bslash;
+		if (slash && slash > cd_fname) {
+			size_t len = (size_t)(slash - cd_fname);
+			if (len >= sizeof(cd_dir))
+				len = sizeof(cd_dir) - 1;
+			memcpy(cd_dir, cd_fname, len);
+			cd_dir[len] = 0;
+			snprintf(cd_bios_dir, sizeof(cd_bios_dir), "%s/bios", cd_dir);
+			search_dirs[num_dirs++] = cd_dir;
+			search_dirs[num_dirs++] = cd_bios_dir;
+
+			slash = strrchr(cd_dir, '/');
+			bslash = strrchr(cd_dir, '\\');
+			if (bslash && (!slash || bslash > slash))
+				slash = bslash;
+			if (slash && slash > cd_dir) {
+				len = (size_t)(slash - cd_dir);
+				if (len >= sizeof(cd_parent_dir))
+					len = sizeof(cd_parent_dir) - 1;
+				memcpy(cd_parent_dir, cd_dir, len);
+				cd_parent_dir[len] = 0;
+				snprintf(cd_parent_bios_dir, sizeof(cd_parent_bios_dir), "%s/bios", cd_parent_dir);
+				search_dirs[num_dirs++] = cd_parent_dir;
+				search_dirs[num_dirs++] = cd_parent_bios_dir;
+			}
+		}
+	}
+
+	root_dir[0] = root_bios_dir[0] = root_roms_dir[0] = 0;
+	if (plat_get_root_dir(root_dir, sizeof(root_dir)) > 0) {
+		size_t rlen = strlen(root_dir);
+		if (rlen > 1 && (root_dir[rlen - 1] == '/' || root_dir[rlen - 1] == '\\'))
+			root_dir[rlen - 1] = 0;
+		snprintf(root_bios_dir, sizeof(root_bios_dir), "%s/bios", root_dir);
+		snprintf(root_roms_dir, sizeof(root_roms_dir), "%s/roms", root_dir);
+		search_dirs[num_dirs++] = root_dir;
+		search_dirs[num_dirs++] = root_bios_dir;
+		search_dirs[num_dirs++] = root_roms_dir;
+	}
+
+#ifdef __PS3__
+	search_dirs[num_dirs++] = "/dev_hdd0/picodrive/bios";
+	search_dirs[num_dirs++] = "/dev_hdd0/picodrive/roms";
+	search_dirs[num_dirs++] = "/dev_hdd0/picodrive";
+	search_dirs[num_dirs++] = "/dev_hdd0/game/PICO00001/USRDIR/bios";
+	search_dirs[num_dirs++] = "/dev_hdd0/game/PICO00001/USRDIR/roms";
+	search_dirs[num_dirs++] = "/dev_hdd0/game/PICO00001/USRDIR";
+	search_dirs[num_dirs++] = "/dev_hdd0/bios";
+	search_dirs[num_dirs++] = "/dev_hdd0/BIOS";
+	search_dirs[num_dirs++] = "/dev_hdd0/roms";
+	search_dirs[num_dirs++] = "/dev_hdd0/ROMS";
+	search_dirs[num_dirs++] = "/dev_usb000/picodrive/bios";
+	search_dirs[num_dirs++] = "/dev_usb000/picodrive/roms";
+	search_dirs[num_dirs++] = "/dev_usb000/picodrive";
+	search_dirs[num_dirs++] = "/dev_usb000/bios";
+	search_dirs[num_dirs++] = "/dev_usb000/BIOS";
+	search_dirs[num_dirs++] = "/dev_usb000/roms";
+	search_dirs[num_dirs++] = "/dev_usb000/ROMS";
+	search_dirs[num_dirs++] = "/dev_usb000";
+	search_dirs[num_dirs++] = "/dev_usb001/bios";
+	search_dirs[num_dirs++] = "/dev_usb001/roms";
+	search_dirs[num_dirs++] = "/dev_usb001";
+	search_dirs[num_dirs++] = "/dev_hdd0/game/RETROARCH/USRDIR/cores/system";
+	search_dirs[num_dirs++] = "/dev_hdd0/game/SSNE10000/USRDIR/cores/system";
+#endif
+
+	for (d = 0; d < num_dirs; d++) {
+		if (bios_match_in_dir(search_dirs[d], files, count, static_buff, sizeof(static_buff))) {
+			lprintf("using bios: %s\n", static_buff);
+			return static_buff;
+		}
+	}
+
+	for (d = 0; d < num_dirs; d++) {
+		if (bios_scan_header_in_dir(search_dirs[d], *region, NULL, static_buff, sizeof(static_buff))) {
+			lprintf("using scanned bios: %s\n", static_buff);
+			return static_buff;
+		}
 	}
 
 	for (i = 0; i < count; i++)
@@ -236,12 +492,46 @@ static const char *find_bios(int *region, const char *cd_fname)
 		lprintf("using bios: %s\n", static_buff);
 		fclose(f);
 		return static_buff;
-	} else {
-		sprintf(static_buff, "no %s BIOS files found, read docs",
-			*region != 4 ? (*region == 8 ? "EU" : "JAP") : "USA");
-		menu_update_msg(static_buff);
-		return NULL;
 	}
+
+	if (*region == 4) {
+		fallback_regions[0] = 8;
+		fallback_regions[1] = 1;
+	} else if (*region == 8) {
+		fallback_regions[0] = 4;
+		fallback_regions[1] = 1;
+	} else {
+		fallback_regions[0] = 4;
+		fallback_regions[1] = 8;
+	}
+
+	for (i = 0; i < 2; i++) {
+		int fb_rgn = fallback_regions[i];
+		const char * const *fb_files;
+		int fb_count;
+		get_region_bios_list(fb_rgn, &fb_files, &fb_count);
+		for (d = 0; d < num_dirs; d++) {
+			if (bios_match_in_dir(search_dirs[d], fb_files, fb_count, static_buff, sizeof(static_buff))) {
+				*region = fb_rgn;
+				lprintf("using fallback bios: %s\n", static_buff);
+				return static_buff;
+			}
+		}
+	}
+
+	for (d = 0; d < num_dirs; d++) {
+		int fb_rgn = *region;
+		if (bios_scan_header_in_dir(search_dirs[d], 0, &fb_rgn, static_buff, sizeof(static_buff))) {
+			*region = fb_rgn;
+			lprintf("using fallback scanned bios: %s\n", static_buff);
+			return static_buff;
+		}
+	}
+
+	sprintf(static_buff, "no %s BIOS files found, read docs",
+		*region != 4 ? (*region == 8 ? "EU" : "JAP") : "USA");
+	menu_update_msg(static_buff);
+	return NULL;
 }
 
 static const char *find_msu(const char *cd_fname)

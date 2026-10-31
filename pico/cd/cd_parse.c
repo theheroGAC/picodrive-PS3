@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 
 #include "../pico_int.h"
 #include "cd_parse.h"
@@ -109,6 +110,48 @@ static int file_openable(const char *fname)
 		return 0;
 	fclose(f);
 	return 1;
+}
+
+static int file_openable_ci(char *full_path, char *filep, size_t filep_size)
+{
+	char dir_buf[256];
+	char want_name[256];
+	DIR *d;
+	struct dirent *ent;
+	size_t dir_len;
+
+	if (file_openable(full_path))
+		return 1;
+	if (!filep || !filep[0])
+		return 0;
+
+	strncpy(want_name, filep, sizeof(want_name) - 1);
+	want_name[sizeof(want_name) - 1] = 0;
+
+	dir_len = (size_t)(filep - full_path);
+	if (dir_len == 0) {
+		strcpy(dir_buf, ".");
+	} else {
+		if (dir_len >= sizeof(dir_buf))
+			dir_len = sizeof(dir_buf) - 1;
+		memcpy(dir_buf, full_path, dir_len);
+		dir_buf[dir_len] = 0;
+		if (dir_len > 1 && (dir_buf[dir_len - 1] == '/' || dir_buf[dir_len - 1] == '\\'))
+			dir_buf[dir_len - 1] = 0;
+	}
+
+	d = opendir(dir_buf);
+	if (!d)
+		return 0;
+	while ((ent = readdir(d)) != NULL) {
+		if (strcasecmp(ent->d_name, want_name) == 0) {
+			snprintf(filep, filep_size, "%s", ent->d_name);
+			closedir(d);
+			return file_openable(full_path);
+		}
+	}
+	closedir(d);
+	return 0;
 }
 
 #define BEGINS(buff,str) (strncmp(buff,str,sizeof(str)-1) == 0)
@@ -285,7 +328,7 @@ cd_data_t *cue_parse(const char *fname)
 
 			if (count == 1 || strcmp(data->tracks[1].fname, current_file) != 0)
 			{
-				if (file_openable(current_file))
+				if (file_openable_ci(current_file, current_filep, current_filep_size))
 					goto file_ok;
 
 				elprintf(EL_STATUS, "cue: bad/missing file: \"%s\"", current_file);
@@ -296,7 +339,7 @@ cd_data_t *cue_parse(const char *fname)
 					get_ext(current_file, ext, NULL, 0);
 					snprintf(current_filep, current_filep_size,
 						"%s%s", cue_base, ext);
-					if (file_openable(current_file))
+					if (file_openable_ci(current_file, current_filep, current_filep_size))
 						goto file_ok;
 
 					// try with the same case (for unix)
@@ -306,7 +349,7 @@ cd_data_t *cue_parse(const char *fname)
 
 					snprintf(current_filep, current_filep_size,
 						"%s%s", cue_base, ext);
-					if (file_openable(current_file))
+					if (file_openable_ci(current_file, current_filep, current_filep_size))
 						goto file_ok;
 				}
 
