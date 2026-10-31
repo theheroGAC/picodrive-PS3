@@ -267,6 +267,7 @@ LDLIBS += platform/ps3/SDL_PSL1GHTrender.o -lSDL2 -lgcm_sys -lio -laudio -lsysut
 OBJS += platform/ps3/plat.o
 OBJS += platform/ps3/emu.o
 OBJS += platform/ps3/in_ps3.o
+OBJS += platform/ps3/SDL_PSL1GHTrender.o
 USE_FRONTEND = 1
 endif
 ifeq "$(PLATFORM)" "win32"
