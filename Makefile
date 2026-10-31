@@ -263,7 +263,7 @@ endif
 ifeq "$(PLATFORM)" "ps3"
 CFLAGS += -D__PS3__ -D__PSL1GHT__ -DUSE_BGR555 -DFAMEC_NO_GOTOS
 LDFLAGS += -fno-lto
-LDLIBS += -lSDL2 -lgcm_sys -lio -laudio -lsysutil -lrsx -lrt -llv2 -lm -lpng -lz
+LDLIBS += platform/ps3/SDL_PSL1GHTrender.o -lSDL2 -lgcm_sys -lio -laudio -lsysutil -lrsx -lrt -llv2 -lm -lpng -lz
 OBJS += platform/ps3/plat.o
 OBJS += platform/ps3/emu.o
 OBJS += platform/ps3/in_ps3.o

@@ -1,4 +1,5 @@
 *.o
+!platform/ps3/SDL_PSL1GHTrender.o
 *.swp
 *.dll
 *.lib

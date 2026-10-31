@@ -42,14 +42,11 @@ void ps3_diag_set(int stage, const char *msg)
 	ps3_plog(buf);
 }
 
-void *plat_mem_get_for_drc(size_t size);
-
 void plat_early_init(void)
 {
 	void ps3_early_video(void);
 	DIR *d;
 
-	plat_mem_get_for_drc(4 * 1024 * 1024);
 	ioPadInit(7);
 	ps3_diag_set(1, "enter");
 
@@ -184,6 +181,7 @@ unsigned int plat_get_ticks_us(void)
 
 void ps3_check_sysutil(void);
 void ps3_menu_idle_flip(int ms);
+void ps3_drc_disable(void);
 
 void plat_wait_till_us(unsigned int us_to)
 {
@@ -260,6 +258,7 @@ int plat_mem_set_exec(void *ptr, size_t size)
 {
 	if (ptr != NULL && g_drc_page_table[0] != 0 && (uint64_t)ptr == g_drc_page_table[0])
 		return 0;
+	ps3_drc_disable();
 	return -1;
 }
 
