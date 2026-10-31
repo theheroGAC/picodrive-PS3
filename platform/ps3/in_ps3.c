@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <io/pad.h>
 #include "../libpicofe/input.h"
-#include "../common/emu.h"
 #include "in_ps3.h"
 
 #define IN_PS3_PREFIX "ps3:"
@@ -89,22 +88,13 @@ static unsigned int ps3_pad_read(int pad)
 		if (data.len >= 8) {
 			int lx = data.button[6] & 0xff;
 			int ly = data.button[7] & 0xff;
-			int dz = currentConfig.analog_deadzone;
-			int thresh;
-			if (dz < 1 || dz > 99)
-				dz = 30;
-			thresh = (dz * 128) / 100;
-			if (thresh < 24)
-				thresh = 24;
-			if (thresh > 96)
-				thresh = 96;
-			if (lx < 128 - thresh)
+			if (lx < 80)
 				res |= PS3_PAD_LEFT;
-			if (lx > 128 + thresh)
+			if (lx > 176)
 				res |= PS3_PAD_RIGHT;
-			if (ly < 128 - thresh)
+			if (ly < 80)
 				res |= PS3_PAD_UP;
-			if (ly > 128 + thresh)
+			if (ly > 176)
 				res |= PS3_PAD_DOWN;
 		}
 		pad_state[pad] = res;

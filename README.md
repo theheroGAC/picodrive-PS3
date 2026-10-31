@@ -1,4 +1,4 @@
-# PicoDrive PS3 (v.1.0.1)
+# PicoDrive PS3 (v.1.0.2)
 
 Port of **PicoDrive** for the **PlayStation 3** (PS3) using the PSL1GHT SDK.
 

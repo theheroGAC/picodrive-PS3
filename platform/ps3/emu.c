@@ -10,7 +10,6 @@
 #include <sys/event_queue.h>
 #include <sys/process.h>
 #include <sysutil/sysutil.h>
-#include <rsx/gcm_sys.h>
 #include <SDL2/SDL.h>
 #include "in_ps3.h"
 #include "../libpicofe/input.h"
@@ -349,30 +348,8 @@ static void calc_screen_quad(void)
 
 static void apply_renderer(void)
 {
-	PicoIn.opt &= ~(POPT_ALT_RENDERER | POPT_EN_SOFTSCALE | POPT_EN_FM_FILTER | POPT_EN_SNDFILTER);
-	PicoIn.filter = 0;
-
-	if ((PicoIn.AHW & PAHW_32X) && !is_bg_frame) {
-		switch (currentConfig.renderer32x) {
-		case RT_16BIT:
-			PicoDrawSetOutFormat(PDF_RGB555, 0);
-			break;
-		case RT_8BIT_ACC:
-			PicoDrawSetOutFormat(PDF_8BIT, 0);
-			break;
-		case RT_8BIT_FAST:
-			PicoIn.opt |= POPT_ALT_RENDERER;
-			PicoDrawSetOutFormat(PDF_NONE, 0);
-			break;
-		default:
-			PicoDrawSetOutFormat(PDF_RGB555, 0);
-			break;
-		}
-	} else {
-		PicoDrawSetOutFormat(PDF_RGB555, 0);
-	}
-	PicoDrawSetOutBuf(g_screen_ptr, g_screen_ppitch * 2);
-	Pico.m.dirtyPal = 1;
+	PicoIn.opt &= ~(POPT_ALT_RENDERER | POPT_EN_SOFTSCALE);
+	PicoDrawSetOutFormat(PDF_RGB555, 0);
 }
 
 static volatile int xmb_exit_requested = 0;
@@ -407,12 +384,6 @@ void ps3_check_sysutil(void)
 		emu_finish();
 		plat_finish();
 	}
-}
-
-void ps3_drc_disable(void)
-{
-	currentConfig.s_PicoOpt &= ~POPT_EN_DRC;
-	PicoIn.opt &= ~POPT_EN_DRC;
 }
 
 void ps3_sdl_render_cp(const char *what)
@@ -641,6 +612,24 @@ static void ps3_menu_rect(SDL_Rect *r)
 	}
 }
 
+static void ps3_clear_screen(void)
+{
+	SDL_Rect r;
+
+	if (!g_ren)
+		return;
+	if (g_bg_tex) {
+		r.x = 0;
+		r.y = 0;
+		r.w = g_out_w;
+		r.h = g_out_h;
+		SDL_RenderCopy(g_ren, g_bg_tex, NULL, &r);
+		return;
+	}
+	SDL_SetRenderDrawColor(g_ren, 0, 0, 0, 255);
+	SDL_RenderClear(g_ren);
+}
+
 static void ps3_clear_borders(const SDL_Rect *dr)
 {
 	SDL_Rect r;
@@ -713,7 +702,8 @@ void plat_video_flip(void)
 	SDL_UpdateTexture(g_screen_tex, NULL, active_buf, out_w * 2);
 	ps3_game_rect(&dr);
 
-	ps3_clear_borders(&dr);
+	SDL_SetRenderDrawColor(g_ren, 0, 0, 0, 255);
+	ps3_clear_screen();
 	SDL_RenderCopy(g_ren, g_screen_tex, NULL, &dr);
 	SDL_RenderPresent(g_ren);
 	ps3_check_sysutil();
@@ -765,37 +755,24 @@ void plat_video_menu_end(void)
 
 	ps3_clear_borders(&dr);
 	SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
-	gcmResetFlipStatus();
 	SDL_RenderPresent(g_ren);
 	ps3_check_sysutil();
 }
 
 void ps3_menu_idle_flip(int ms)
 {
-	static int open_frames = 0;
+	static int was_open = 0;
 	SDL_Rect dr;
 
 	ps3_check_sysutil();
-	if (!xmb_exit_requested && in_menu_active && g_ren && g_menu_tex && g_menuscreen_ptr) {
-		if (xmb_menu_open) {
-			if (gcmGetFlipStatus() == 0) {
-				if (open_frames < 2) {
-					ps3_menu_rect(&dr);
-					ps3_clear_borders(&dr);
-					SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
-					open_frames++;
-				}
-				gcmResetFlipStatus();
-				SDL_RenderPresent(g_ren);
-			}
-		} else if (open_frames > 0) {
-			open_frames = 0;
-			ps3_menu_rect(&dr);
-			ps3_clear_borders(&dr);
-			SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
-			gcmResetFlipStatus();
-			SDL_RenderPresent(g_ren);
-		}
+	if (!xmb_exit_requested && in_menu_active && (xmb_menu_open || was_open) && g_ren && g_menu_tex && g_menuscreen_ptr) {
+		was_open = xmb_menu_open;
+		ps3_menu_rect(&dr);
+		ps3_clear_borders(&dr);
+		SDL_RenderCopy(g_ren, g_menu_tex, NULL, &dr);
+		SDL_RenderPresent(g_ren);
+		ps3_check_sysutil();
+		return;
 	}
 	if (ms > 0)
 		usleep(ms * 1000);
@@ -813,32 +790,31 @@ void pemu_prep_defconfig(void)
 {
 	defaultConfig.s_PsndRate = PS3_SND_RATE;
 	defaultConfig.s_PicoCDBuffers = 64;
-	defaultConfig.filter = EOPT_FILTER_NONE;
+	defaultConfig.filter = EOPT_FILTER_BILINEAR;
 	defaultConfig.scaling = EOPT_SCALE_43;
 	defaultConfig.vscaling = EOPT_VSCALE_FULL;
 	defaultConfig.renderer = RT_16BIT;
-	defaultConfig.renderer32x = RT_8BIT_ACC;
+	defaultConfig.renderer32x = RT_16BIT;
 	defaultConfig.Frameskip = 0;
 	defaultConfig.max_skip = 0;
-	defaultConfig.analog_deadzone = 30;
 	defaultConfig.EmuOpt |= EOPT_SHOW_RTC | EOPT_EN_SOUND;
-	defaultConfig.s_PicoOpt &= ~(POPT_EN_FM_FILTER | POPT_EN_SNDFILTER | POPT_EN_SOFTSCALE);
 	defaultConfig.s_PicoOpt |= POPT_EN_DRC | POPT_EN_MCD_PCM | POPT_EN_MCD_CDDA | POPT_EN_MCD_GFX | POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
 	ps3_plog("defconfig_done");
 }
 
 void pemu_validate_config(void)
 {
-	currentConfig.filter = EOPT_FILTER_NONE;
-	PicoIn.filter = 0;
-	currentConfig.s_PicoOpt &= ~(POPT_EN_FM_FILTER | POPT_EN_SNDFILTER | POPT_EN_SOFTSCALE);
-	PicoIn.opt &= ~(POPT_EN_FM_FILTER | POPT_EN_SNDFILTER | POPT_EN_SOFTSCALE);
-	currentConfig.s_PicoOpt |= POPT_EN_DRC | POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
-	PicoIn.opt |= POPT_EN_DRC | POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
+	if (plat_mem_get_for_drc(4 * 1024 * 1024) != NULL) {
+		currentConfig.s_PicoOpt |= POPT_EN_DRC;
+		PicoIn.opt |= POPT_EN_DRC;
+	} else {
+		currentConfig.s_PicoOpt &= ~POPT_EN_DRC;
+		PicoIn.opt &= ~POPT_EN_DRC;
+	}
+	currentConfig.s_PicoOpt |= POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
+	PicoIn.opt |= POPT_EN_32X | POPT_EN_PWM | POPT_PWM_IRQ_OPT;
 	currentConfig.Frameskip = 0;
 	currentConfig.max_skip = 0;
-	if (currentConfig.analog_deadzone < 1 || currentConfig.analog_deadzone > 99)
-		currentConfig.analog_deadzone = 30;
 	if (!(currentConfig.EmuOpt & EOPT_EN_SOUND)) {
 		currentConfig.EmuOpt |= EOPT_EN_SOUND;
 		ps3_plog("sound_enabled");
@@ -862,9 +838,7 @@ void plat_init(void)
 void plat_finish(void)
 {
 	pemu_sound_stop();
-	sound_deinit();
 	plat_mem_free_for_drc();
-	ioPadEnd();
 	sysUtilUnregisterCallback(SYSUTIL_EVENT_SLOT0);
 	sysProcessExit(0);
 }
@@ -911,30 +885,19 @@ void emu_video_mode_change(int start_line, int line_count, int start_col, int co
 
 void pemu_forced_frame(int no_scale, int do_emu)
 {
-	(void)no_scale;
 	is_bg_frame = 1;
 	Pico.m.dirtyPal = 1;
-	emu_cmn_forced_frame(1, do_emu, g_screen_ptr);
+	if (!no_scale)
+		no_scale = (currentConfig.scaling == EOPT_SCALE_NONE);
+	emu_cmn_forced_frame(no_scale, do_emu, g_screen_ptr);
 	g_menubg_src_ptr = g_screen_ptr;
 	is_bg_frame = 0;
 }
 
 void plat_video_toggle_renderer(int change, int is_menu_call)
 {
-	if (change && (PicoIn.AHW & PAHW_32X)) {
-		currentConfig.renderer32x += change;
-		if (currentConfig.renderer32x >= RT_COUNT)
-			currentConfig.renderer32x = 0;
-		else if (currentConfig.renderer32x < 0)
-			currentConfig.renderer32x = RT_COUNT - 1;
-	}
-	if (!is_menu_call) {
-		apply_renderer();
-		plat_video_set_buffer(g_screen_ptr);
-		calc_screen_quad();
-		if (change && (PicoIn.AHW & PAHW_32X))
-			emu_status_msg(renderer_names32x[currentConfig.renderer32x]);
-	}
+	apply_renderer();
+	calc_screen_quad();
 }
 
 void plat_video_set_buffer(void *buf)
@@ -945,7 +908,6 @@ void plat_video_set_buffer(void *buf)
 void plat_video_loop_prepare(void)
 {
 	apply_renderer();
-	plat_video_set_buffer(g_screen_ptr);
 	calc_screen_quad();
 }
 

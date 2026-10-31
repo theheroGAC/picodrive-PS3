@@ -1013,12 +1013,7 @@ static int mh_profile(int id, int keys) {
 		currentConfig.renderer = find_renderer(renderer_names, "16bit");
 		currentConfig.renderer32x = find_renderer(renderer_names32x, "accurate");
 		PicoIn.sndRate = 44100;
-#ifdef __PS3__
-		PicoIn.opt |= POPT_EN_FM | POPT_EN_MCD_CDDA;
-		PicoIn.opt &= ~POPT_EN_FM_FILTER;
-#else
 		PicoIn.opt |= POPT_EN_FM_FILTER | POPT_EN_FM | POPT_EN_MCD_CDDA;
-#endif
 		PicoIn.opt &= ~POPT_PWM_IRQ_OPT;
 		break;
 	case MA_PROFILE_BALANCED:
@@ -1352,7 +1347,7 @@ static void draw_frame_credits(void)
 }
 
 static const char credits[] =
-	"PicoDrive v.1.0.1 PS3\n"
+	"PicoDrive v.1.0.2 PS3\n"
 	"(c) notaz, 2006-2013; irixxxx, 2018-2024\n"
 	"Port PS3 by theheroGAC 2026\n"
 	"PS3 dynarec by OsirisX\n\n"
@@ -1689,7 +1684,7 @@ static const char h_saveload[] = "Game options are overloading global options";
 
 static menu_entry e_menu_main[] =
 {
-	mee_label     ("PicoDrive v.1.0.1 PS3"),
+	mee_label     ("PicoDrive v.1.0.2 PS3"),
 	mee_label     (""),
 	mee_handler_id("Resume game",        MA_MAIN_RESUME_GAME, main_menu_handler),
 	mee_handler_id("Main menu",          MA_MAIN_MAIN_MENU,   main_menu_handler),
@@ -1916,12 +1911,6 @@ void menu_init(void)
 #ifdef __PS3__
 	{
 		void ps3_plog(const char *msg);
-		me_enable(e_menu_gfx_options, MA_OPT3_FILTERING, 0);
-		me_enable(e_menu_md_options, MA_OPT_FM_FILTER, 0);
-		me_enable(e_menu_snd_options, MA_OPT_SOUND_FILTER, 0);
-		me_enable(e_menu_snd_options, MA_OPT_SOUND_ALPHA, 0);
-		me_enable(e_menu_sms_options, MA_SMSOPT_GHOSTING, 0);
-		me_enable(e_menu_keyconfig, MA_CTRL_DEADZONE, 1);
 		ps3_plog("menu_init_done");
 	}
 #endif
